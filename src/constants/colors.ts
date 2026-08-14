@@ -1,26 +1,29 @@
 export const COLORS_DARK = {
   // Fondos
-  background:       '#0f172a',
-  surface:          '#1e293b',
-  surfaceElevated:  '#263548',
-  border:           '#334155',
+  background:       '#0B0C10',
+  surface:          '#13151C',
+  surfaceElevated:  '#1A1D27',
+  surfaceHigh:      '#21253A',
+  border:           'rgba(255,255,255,0.07)',
+  borderStrong:     'rgba(255,255,255,0.13)',
 
   // Texto
-  textPrimary:      '#f1f5f9',
-  textSecondary:    '#94a3b8',
-  textMuted:        '#475569',
+  textPrimary:      '#F0F1F5',
+  textSecondary:    '#8B8FA8',
+  textMuted:        '#4E526A',
 
-  // Marca
-  primary:          '#3b82f6',
-  primaryHover:     '#2563eb',
+  // Marca — violeta premium
+  primary:          '#7C6FFF',
+  primaryHover:     '#6A5EE0',
+  primarySurface:   'rgba(124,111,255,0.15)',
 
   // Semánticos
-  win:              '#22c55e',
-  winSurface:       '#14532d',
-  loss:             '#ef4444',
-  lossSurface:      '#7f1d1d',
-  warning:          '#f59e0b',
-  warningSurface:   '#451a03',
+  win:              '#2DD4A0',
+  winSurface:       'rgba(45,212,160,0.12)',
+  loss:             '#F06292',
+  lossSurface:      'rgba(240,98,146,0.12)',
+  warning:          '#F59E0B',
+  warningSurface:   'rgba(245,158,11,0.12)',
 
   // Neutros
   white:            '#ffffff',
@@ -30,27 +33,30 @@ export const COLORS_DARK = {
 
 export const COLORS_LIGHT = {
   // Fondos
-  background:       '#f8fafc',
-  surface:          '#ffffff',
-  surfaceElevated:  '#f1f5f9',
-  border:           '#e2e8f0',
+  background:       '#F4F5F9',
+  surface:          '#FFFFFF',
+  surfaceElevated:  '#ECEEF5',
+  surfaceHigh:      '#E2E5F0',
+  border:           'rgba(0,0,0,0.07)',
+  borderStrong:     'rgba(0,0,0,0.13)',
 
   // Texto
-  textPrimary:      '#0f172a',
-  textSecondary:    '#475569',
-  textMuted:        '#94a3b8',
+  textPrimary:      '#0D0F1A',
+  textSecondary:    '#4E526A',
+  textMuted:        '#9599B3',
 
   // Marca
-  primary:          '#3b82f6',
-  primaryHover:     '#2563eb',
+  primary:          '#7C6FFF',
+  primaryHover:     '#6A5EE0',
+  primarySurface:   'rgba(124,111,255,0.12)',
 
   // Semánticos
-  win:              '#16a34a',
-  winSurface:       '#dcfce7',
-  loss:             '#dc2626',
-  lossSurface:      '#fee2e2',
-  warning:          '#d97706',
-  warningSurface:   '#fef3c7',
+  win:              '#059669',
+  winSurface:       'rgba(5,150,105,0.10)',
+  loss:             '#E11D6A',
+  lossSurface:      'rgba(225,29,106,0.10)',
+  warning:          '#D97706',
+  warningSurface:   'rgba(217,119,6,0.10)',
 
   // Neutros
   white:            '#ffffff',

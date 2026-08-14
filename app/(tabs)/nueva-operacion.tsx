@@ -13,17 +13,18 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { TrendingUp, TrendingDown, CheckCircle } from 'lucide-react-native';
+import { TrendingUp, TrendingDown, CheckCircle2, Sparkles } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTema } from '@/src/hooks';
 import { useOperaciones } from '@/src/hooks';
 import { useCapital } from '@/src/hooks';
 import { useFadeIn } from '@/src/hooks';
-import { Card, AppText, Button, AppInput, Divider } from '@/src/components';
-import { SPACING, ICON_SIZE, RADIUS } from '@/src/constants';
+import { AppText, AppInput, Button } from '@/src/components';
+import { SPACING, RADIUS } from '@/src/constants';
 import { TipoOperacion } from '@/src/types';
 
-const esquemaOperacion = z.object({
+const esquema = z.object({
   monto: z
     .string()
     .min(1, 'El monto es requerido')
@@ -34,13 +35,13 @@ const esquemaOperacion = z.object({
   nota: z.string().optional(),
 });
 
-type FormData = z.infer<typeof esquemaOperacion>;
+type FormData = z.infer<typeof esquema>;
 
 export default function NuevaOperacionScreen() {
-  const { colors }                       = useTema();
+  const { colors, isDark }               = useTema();
   const { agregarOperacion }             = useOperaciones();
   const { capital }                      = useCapital();
-  const [tipoSeleccionado, setTipo]      = useState<TipoOperacion>('win');
+  const [tipo, setTipo]                  = useState<TipoOperacion>('win');
   const [guardando, setGuardando]        = useState(false);
   const [exitoso, setExitoso]            = useState(false);
 
@@ -53,136 +54,163 @@ export default function NuevaOperacionScreen() {
     watch,
     formState: { errors },
   } = useForm<FormData>({
-    resolver: zodResolver(esquemaOperacion),
+    resolver: zodResolver(esquema),
     defaultValues: { monto: '', nota: '' },
   });
 
-  const montoActual    = watch('monto');
-  const montoNumerico  = parseFloat(montoActual) || 0;
-  const capitalResultante =
-    tipoSeleccionado === 'win'
-      ? capital + montoNumerico
-      : capital - montoNumerico;
+  const montoActual   = watch('monto');
+  const montoNum      = parseFloat(montoActual) || 0;
+  const capitalFinal  = tipo === 'win' ? capital + montoNum : capital - montoNum;
+  const diferencia    = tipo === 'win' ? montoNum : -montoNum;
+  const pct           = capital > 0 ? (Math.abs(diferencia) / capital) * 100 : 0;
 
   const onSubmit = async (data: FormData) => {
     setGuardando(true);
     try {
-      if (tipoSeleccionado === 'win') {
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      } else {
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      }
-
+      await Haptics.notificationAsync(
+        tipo === 'win'
+          ? Haptics.NotificationFeedbackType.Success
+          : Haptics.NotificationFeedbackType.Warning
+      );
       agregarOperacion({
-        tipo:  tipoSeleccionado,
+        tipo,
         monto: parseFloat(data.monto),
         nota:  data.nota || undefined,
       });
-
       setExitoso(true);
       reset();
-      setTimeout(() => setExitoso(false), 2000);
+      setTimeout(() => setExitoso(false), 2500);
     } catch {
-      Alert.alert('Error', 'No se pudo guardar la operación. Intenta de nuevo.');
+      Alert.alert('Error', 'No se pudo guardar la operación.');
     } finally {
       setGuardando(false);
     }
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView
-        style={styles.keyboardView}
+        style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView
-          style={styles.scroll}
+          style={styles.flex}
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <Animated.View style={{
-            opacity:   opForm,
-            transform: [{ translateY: tyForm }],
-          }}>
-            {/* Header */}
+          <Animated.View style={{ opacity: opForm, transform: [{ translateY: tyForm }] }}>
+
+            {/* ── HEADER ── */}
             <View style={styles.header}>
-              <AppText variante="label" color={colors.textMuted}>
-                TRADING JOURNAL
-              </AppText>
-              <AppText variante="subtitulo">Nueva Operación</AppText>
+              <View>
+                <AppText variante="label" color={colors.textMuted}>
+                  TRADING JOURNAL
+                </AppText>
+                <AppText variante="subtitulo" color={colors.textPrimary}>
+                  Nueva Operación
+                </AppText>
+              </View>
+              <View style={[styles.iconWrap, { backgroundColor: colors.primarySurface }]}>
+                <Sparkles size={20} color={colors.primary} />
+              </View>
             </View>
 
-            {/* Capital actual */}
-            <Card style={styles.capitalCard}>
+            {/* ── CARD CAPITAL ACTUAL ── */}
+            <View style={[styles.capitalCard, {
+              backgroundColor: colors.surface,
+              borderColor:     colors.border,
+            }]}>
               <AppText variante="label" color={colors.textMuted}>
                 CAPITAL ACTUAL
               </AppText>
               <AppText variante="subtitulo" color={colors.textPrimary}>
                 ${capital.toFixed(2)}
               </AppText>
-            </Card>
+            </View>
 
-            {/* Selector de tipo */}
+            {/* ── SELECTOR TIPO ── */}
             <AppText variante="label" color={colors.textMuted} style={styles.sectionLabel}>
-              RESULTADO DE LA OPERACIÓN
+              RESULTADO
             </AppText>
 
             <View style={styles.tipoRow}>
+              {/* GANANCIA */}
               <TouchableOpacity
-                style={[
-                  styles.tipoBtn,
-                  {
-                    backgroundColor: tipoSeleccionado === 'win'
-                      ? colors.winSurface : colors.surface,
-                    borderColor: tipoSeleccionado === 'win'
-                      ? colors.win : colors.border,
-                  },
-                ]}
+                style={[styles.tipoBtn, {
+                  borderColor: tipo === 'win' ? colors.win : colors.border,
+                  backgroundColor: tipo === 'win'
+                    ? colors.winSurface
+                    : colors.surface,
+                }]}
                 onPress={() => setTipo('win')}
-                activeOpacity={0.7}
+                activeOpacity={0.75}
               >
-                <TrendingUp
-                  size={ICON_SIZE.lg}
-                  color={tipoSeleccionado === 'win' ? colors.win : colors.textMuted}
-                />
+                {tipo === 'win' && (
+                  <LinearGradient
+                    colors={['rgba(45,212,160,0.08)', 'transparent']}
+                    style={StyleSheet.absoluteFillObject}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  />
+                )}
+                <View style={[styles.tipoBtnIcon, {
+                  backgroundColor: tipo === 'win'
+                    ? 'rgba(45,212,160,0.20)'
+                    : colors.surfaceElevated,
+                }]}>
+                  <TrendingUp
+                    size={22}
+                    color={tipo === 'win' ? colors.win : colors.textMuted}
+                  />
+                </View>
                 <AppText
                   variante="label"
-                  color={tipoSeleccionado === 'win' ? colors.win : colors.textMuted}
-                  style={styles.tipoBtnText}
+                  color={tipo === 'win' ? colors.win : colors.textMuted}
                 >
                   GANANCIA
                 </AppText>
               </TouchableOpacity>
 
+              {/* PÉRDIDA */}
               <TouchableOpacity
-                style={[
-                  styles.tipoBtn,
-                  {
-                    backgroundColor: tipoSeleccionado === 'loss'
-                      ? colors.lossSurface : colors.surface,
-                    borderColor: tipoSeleccionado === 'loss'
-                      ? colors.loss : colors.border,
-                  },
-                ]}
+                style={[styles.tipoBtn, {
+                  borderColor: tipo === 'loss' ? colors.loss : colors.border,
+                  backgroundColor: tipo === 'loss'
+                    ? colors.lossSurface
+                    : colors.surface,
+                }]}
                 onPress={() => setTipo('loss')}
-                activeOpacity={0.7}
+                activeOpacity={0.75}
               >
-                <TrendingDown
-                  size={ICON_SIZE.lg}
-                  color={tipoSeleccionado === 'loss' ? colors.loss : colors.textMuted}
-                />
+                {tipo === 'loss' && (
+                  <LinearGradient
+                    colors={['rgba(240,98,146,0.08)', 'transparent']}
+                    style={StyleSheet.absoluteFillObject}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  />
+                )}
+                <View style={[styles.tipoBtnIcon, {
+                  backgroundColor: tipo === 'loss'
+                    ? 'rgba(240,98,146,0.20)'
+                    : colors.surfaceElevated,
+                }]}>
+                  <TrendingDown
+                    size={22}
+                    color={tipo === 'loss' ? colors.loss : colors.textMuted}
+                  />
+                </View>
                 <AppText
                   variante="label"
-                  color={tipoSeleccionado === 'loss' ? colors.loss : colors.textMuted}
-                  style={styles.tipoBtnText}
+                  color={tipo === 'loss' ? colors.loss : colors.textMuted}
                 >
                   PÉRDIDA
                 </AppText>
               </TouchableOpacity>
             </View>
 
-            {/* Monto */}
+            {/* ── MONTO ── */}
             <AppText variante="label" color={colors.textMuted} style={styles.sectionLabel}>
               MONTO
             </AppText>
@@ -204,41 +232,58 @@ export default function NuevaOperacionScreen() {
               )}
             />
 
-            {/* Preview del resultado */}
-            {montoNumerico > 0 && (
-              <Card style={[
-                styles.previewCard,
-                {
-                  borderColor: tipoSeleccionado === 'win'
-                    ? colors.win : colors.loss,
-                },
-              ]}>
+            {/* ── PREVIEW RESULTADO ── */}
+            {montoNum > 0 && (
+              <View style={[styles.previewCard, {
+                backgroundColor: colors.surface,
+                borderColor:     tipo === 'win' ? colors.win : colors.loss,
+              }]}>
+                {/* Fila capital final */}
                 <View style={styles.previewRow}>
                   <AppText variante="caption" color={colors.textMuted}>
-                    Capital después de esta op.
+                    Capital después
                   </AppText>
                   <AppText
                     variante="subtitulo"
-                    color={tipoSeleccionado === 'win' ? colors.win : colors.loss}
+                    color={tipo === 'win' ? colors.win : colors.loss}
                   >
-                    ${capitalResultante.toFixed(2)}
+                    ${capitalFinal.toFixed(2)}
                   </AppText>
                 </View>
+
+                {/* Divisor */}
+                <View style={[styles.previewDivider, { backgroundColor: colors.border }]} />
+
+                {/* Fila diferencia y % */}
                 <View style={styles.previewRow}>
                   <AppText variante="caption" color={colors.textMuted}>
                     Diferencia
                   </AppText>
-                  <AppText
-                    variante="caption"
-                    color={tipoSeleccionado === 'win' ? colors.win : colors.loss}
-                  >
-                    {tipoSeleccionado === 'win' ? '+' : '-'}${montoNumerico.toFixed(2)}
-                  </AppText>
+                  <View style={styles.previewRight}>
+                    <AppText
+                      variante="caption"
+                      color={tipo === 'win' ? colors.win : colors.loss}
+                    >
+                      {tipo === 'win' ? '+' : '-'}${montoNum.toFixed(2)}
+                    </AppText>
+                    <View style={[styles.pctBadge, {
+                      backgroundColor: tipo === 'win'
+                        ? colors.winSurface
+                        : colors.lossSurface,
+                    }]}>
+                      <AppText
+                        variante="label"
+                        color={tipo === 'win' ? colors.win : colors.loss}
+                      >
+                        {pct.toFixed(1)}%
+                      </AppText>
+                    </View>
+                  </View>
                 </View>
-              </Card>
+              </View>
             )}
 
-            {/* Nota opcional */}
+            {/* ── NOTA ── */}
             <AppText variante="label" color={colors.textMuted} style={styles.sectionLabel}>
               NOTA (OPCIONAL)
             </AppText>
@@ -259,38 +304,29 @@ export default function NuevaOperacionScreen() {
               )}
             />
 
-            <Divider margen={SPACING.lg} />
-
-            {/* Botón guardar */}
-            {exitoso ? (
-              <View style={[
-                styles.exitoContainer,
-                {
+            {/* ── BOTÓN GUARDAR ── */}
+            <View style={styles.btnWrap}>
+              {exitoso ? (
+                <View style={[styles.exitoCard, {
                   backgroundColor: colors.winSurface,
                   borderColor:     colors.win,
-                },
-              ]}>
-                <CheckCircle size={ICON_SIZE.md} color={colors.win} />
-                <AppText
-                  variante="label"
-                  color={colors.win}
-                  style={{ marginLeft: SPACING.sm }}
-                >
-                  OPERACIÓN GUARDADA
-                </AppText>
-              </View>
-            ) : (
-              <Button
-                texto={tipoSeleccionado === 'win'
-                  ? 'Registrar Ganancia'
-                  : 'Registrar Pérdida'
-                }
-                onPress={handleSubmit(onSubmit)}
-                variante={tipoSeleccionado === 'win' ? 'win' : 'loss'}
-                cargando={guardando}
-                fullWidth
-              />
-            )}
+                }]}>
+                  <CheckCircle2 size={20} color={colors.win} />
+                  <AppText variante="label" color={colors.win}>
+                    OPERACIÓN GUARDADA
+                  </AppText>
+                </View>
+              ) : (
+                <Button
+                  texto={tipo === 'win' ? 'Registrar Ganancia' : 'Registrar Pérdida'}
+                  onPress={handleSubmit(onSubmit)}
+                  variante={tipo === 'win' ? 'win' : 'loss'}
+                  cargando={guardando}
+                  fullWidth
+                />
+              )}
+            </View>
+
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -299,32 +335,42 @@ export default function NuevaOperacionScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  scroll: {
-    flex: 1,
-  },
+  safe:    { flex: 1 },
+  flex:    { flex: 1 },
   content: {
     padding:       SPACING.md,
-    paddingBottom: SPACING.xxl,
+    paddingBottom: 100,
   },
+
   header: {
-    marginBottom: SPACING.lg,
-  },
-  capitalCard: {
-    marginBottom:   SPACING.lg,
     flexDirection:  'row',
     justifyContent: 'space-between',
     alignItems:     'center',
+    marginBottom:   SPACING.lg,
   },
+  iconWrap: {
+    width:          42,
+    height:         42,
+    borderRadius:   14,
+    alignItems:     'center',
+    justifyContent: 'center',
+  },
+
+  capitalCard: {
+    flexDirection:  'row',
+    justifyContent: 'space-between',
+    alignItems:     'center',
+    borderRadius:   16,
+    borderWidth:    0.5,
+    padding:        SPACING.md,
+    marginBottom:   SPACING.lg,
+  },
+
   sectionLabel: {
     marginBottom: SPACING.sm,
     marginTop:    SPACING.xs,
   },
+
   tipoRow: {
     flexDirection: 'row',
     gap:           SPACING.sm,
@@ -335,36 +381,62 @@ const styles = StyleSheet.create({
     alignItems:      'center',
     justifyContent:  'center',
     paddingVertical: SPACING.lg,
-    borderRadius:    RADIUS.lg,
-    borderWidth:     2,
+    borderRadius:    18,
+    borderWidth:     1.5,
     gap:             SPACING.sm,
+    overflow:        'hidden',
   },
-  tipoBtnText: {
-    marginTop: SPACING.xs,
+  tipoBtnIcon: {
+    width:          48,
+    height:         48,
+    borderRadius:   14,
+    alignItems:     'center',
+    justifyContent: 'center',
   },
+
   previewCard: {
-    marginTop:    SPACING.sm,
-    marginBottom: SPACING.md,
-    borderWidth:  1.5,
-    gap:          SPACING.xs,
+    borderRadius:  14,
+    borderWidth:   1.5,
+    padding:       SPACING.md,
+    marginTop:     SPACING.sm,
+    marginBottom:  SPACING.md,
+    gap:           SPACING.sm,
   },
   previewRow: {
     flexDirection:  'row',
     justifyContent: 'space-between',
     alignItems:     'center',
   },
+  previewRight: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           SPACING.xs,
+  },
+  previewDivider: {
+    height: 0.5,
+  },
+  pctBadge: {
+    paddingHorizontal: 7,
+    paddingVertical:   2,
+    borderRadius:      6,
+  },
+
   notaInput: {
     height:            90,
     textAlignVertical: 'top',
     paddingTop:        SPACING.sm,
   },
-  exitoContainer: {
-    flexDirection:  'row',
-    alignItems:     'center',
-    justifyContent: 'center',
+
+  btnWrap: {
+    marginTop: SPACING.lg,
+  },
+  exitoCard: {
+    flexDirection:   'row',
+    alignItems:      'center',
+    justifyContent:  'center',
+    gap:             SPACING.sm,
     paddingVertical: SPACING.md,
-    borderRadius:   RADIUS.md,
-    borderWidth:    1.5,
-    minHeight:      52,
+    borderRadius:    14,
+    borderWidth:     1.5,
   },
 });

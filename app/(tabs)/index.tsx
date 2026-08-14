@@ -4,19 +4,20 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
-  Dimensions,
   Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
   Sun,
   Moon,
   TrendingUp,
   TrendingDown,
   Target,
-  Activity,
+  Zap,
   ArrowUpRight,
   ArrowDownRight,
+  Trophy,
 } from 'lucide-react-native';
 import { useTema } from '@/src/hooks';
 import { useCapital } from '@/src/hooks';
@@ -26,14 +27,15 @@ import { useFadeIn } from '@/src/hooks';
 import {
   Card,
   AppText,
-  Badge,
-  Divider,
-  GradientCard,
   CapitalAnimado,
 } from '@/src/components';
 import { SPACING, ICON_SIZE, RADIUS } from '@/src/constants';
 
-const RADIUS_VALUE = 10;
+const formatMoney = (valor: number): string => {
+  const abs   = Math.abs(valor);
+  const signo = valor < 0 ? '-' : valor > 0 ? '+' : '';
+  return `${signo}$${abs.toFixed(2)}`;
+};
 
 export default function DashboardScreen() {
   const { colors, isDark, toggleTema } = useTema();
@@ -42,289 +44,278 @@ export default function DashboardScreen() {
   const { resumen }                    = useEstadisticas('dia');
 
   const { opacidad: opHeader,  translateY: tyHeader  } = useFadeIn(400, 0);
-  const { opacidad: opCapital, translateY: tyCapital  } = useFadeIn(400, 100);
-  const { opacidad: opStats,   translateY: tyStats    } = useFadeIn(400, 200);
-  const { opacidad: opOps,     translateY: tyOps      } = useFadeIn(400, 300);
+  const { opacidad: opCapital, translateY: tyCapital  } = useFadeIn(400, 80);
+  const { opacidad: opStats,   translateY: tyStats    } = useFadeIn(400, 160);
+  const { opacidad: opRecent,  translateY: tyRecent   } = useFadeIn(400, 240);
 
   const gananciaNeta = resumen.gananciaNeta;
   const esPositivo   = gananciaNeta >= 0;
+  const winRate      = resumen.tasaExito;
 
-  const gradienteCapital: [string, string] = isDark
-    ? ['#1e3a5f', '#0f172a']
-    : ['#1d4ed8', '#3b82f6'];
-
-  const formatearMoneda = (valor: number): string => {
-    const abs   = Math.abs(valor);
-    const signo = valor < 0 ? '-' : valor > 0 ? '+' : '';
-    return `${signo}$${abs.toFixed(2)}`;
-  };
+  // Últimas 3 operaciones
+  const recientes = [...operaciones]
+    .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
+    .slice(0, 3);
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <Animated.View style={{
-          opacity:   opHeader,
-          transform: [{ translateY: tyHeader }],
-        }}>
+
+        {/* ── HEADER ── */}
+        <Animated.View style={{ opacity: opHeader, transform: [{ translateY: tyHeader }] }}>
           <View style={styles.header}>
             <View>
               <AppText variante="label" color={colors.textMuted}>
                 TRADING JOURNAL
               </AppText>
-              <AppText variante="subtitulo">Dashboard</AppText>
+              <AppText variante="subtitulo" color={colors.textPrimary}>
+                Dashboard
+              </AppText>
             </View>
             <TouchableOpacity
               style={[styles.themeBtn, {
                 backgroundColor: colors.surface,
-                borderColor:     colors.border,
+                borderColor:     colors.borderStrong,
               }]}
               onPress={toggleTema}
               activeOpacity={0.7}
             >
               {isDark
-                ? <Sun  size={ICON_SIZE.md} color={colors.textSecondary} />
-                : <Moon size={ICON_SIZE.md} color={colors.textSecondary} />
+                ? <Sun  size={18} color={colors.textSecondary} />
+                : <Moon size={18} color={colors.textSecondary} />
               }
             </TouchableOpacity>
           </View>
         </Animated.View>
 
-        {/* Card de capital con gradiente */}
-        <Animated.View style={{
-          opacity:   opCapital,
-          transform: [{ translateY: tyCapital }],
-        }}>
-          <GradientCard
-            colores={gradienteCapital}
+        {/* ── CARD CAPITAL ── */}
+        <Animated.View style={{ opacity: opCapital, transform: [{ translateY: tyCapital }] }}>
+          <LinearGradient
+            colors={isDark
+              ? ['#1A1040', '#0B0C10']
+              : ['#5B4FCC', '#7C6FFF']
+            }
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
             style={styles.capitalCard}
-            padding={SPACING.lg}
           >
+            {/* Badge EN VIVO */}
             <View style={styles.capitalTop}>
-              <View style={styles.capitalLabel}>
-                <View style={styles.capitalDot} />
-                <AppText variante="label" color="rgba(255,255,255,0.7)">
-                  CAPITAL ACTUAL
-                </AppText>
-              </View>
-              <View style={[styles.activityBadge, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
-                <Activity size={12} color="rgba(255,255,255,0.8)" />
-                <AppText variante="label" color="rgba(255,255,255,0.8)">
+              <View style={styles.liveBadge}>
+                <View style={styles.liveDot} />
+                <AppText variante="label" color="rgba(255,255,255,0.75)">
                   EN VIVO
                 </AppText>
               </View>
+              <AppText variante="label" color="rgba(255,255,255,0.45)">
+                {operaciones.length} ops totales
+              </AppText>
             </View>
 
-            <CapitalAnimado
-              valor={capital}
-              color="#ffffff"
-              fontSize={40}
-            />
+            {/* Monto capital */}
+            <View style={styles.capitalMid}>
+              <AppText variante="label" color="rgba(255,255,255,0.55)" style={styles.capitalLabel}>
+                CAPITAL ACTUAL
+              </AppText>
+              <CapitalAnimado
+                valor={capital}
+                color="#FFFFFF"
+                fontSize={42}
+              />
+            </View>
 
+            {/* Footer — cambio del día */}
             <View style={styles.capitalFooter}>
-              <View style={[
-                styles.capitalCambio,
-                { backgroundColor: 'rgba(255,255,255,0.12)' },
-              ]}>
+              <View style={[styles.changePill, {
+                backgroundColor: esPositivo
+                  ? 'rgba(45,212,160,0.20)'
+                  : 'rgba(240,98,146,0.20)',
+              }]}>
                 {esPositivo
-                  ? <ArrowUpRight   size={14} color="#86efac" />
-                  : <ArrowDownRight size={14} color="#fca5a5" />
+                  ? <ArrowUpRight   size={14} color="#2DD4A0" />
+                  : <ArrowDownRight size={14} color="#F06292" />
                 }
                 <AppText
                   variante="caption"
-                  color={esPositivo ? '#86efac' : '#fca5a5'}
+                  color={esPositivo ? '#2DD4A0' : '#F06292'}
                 >
-                  {formatearMoneda(gananciaNeta)} hoy
+                  {formatMoney(gananciaNeta)} hoy
                 </AppText>
               </View>
-              <AppText variante="caption" color="rgba(255,255,255,0.5)">
-                {operaciones.length} op{operaciones.length !== 1 ? 's' : ''} en total
-              </AppText>
             </View>
-          </GradientCard>
+          </LinearGradient>
         </Animated.View>
 
-        {/* Stats rápidas */}
-        <Animated.View style={{
-          opacity:   opStats,
-          transform: [{ translateY: tyStats }],
-        }}>
-          <View style={styles.statsRow}>
-            {/* Tasa de éxito */}
-            <Card style={styles.statCard}>
-              <View style={styles.statHeader}>
-                <View style={[styles.statIcon, { backgroundColor: colors.surfaceElevated }]}>
-                  <Target size={ICON_SIZE.sm} color={colors.primary} />
-                </View>
+        {/* ── MÉTRICAS 2x2 ── */}
+        <Animated.View style={{ opacity: opStats, transform: [{ translateY: tyStats }] }}>
+          <View style={styles.grid}>
+
+            {/* Win rate */}
+            <View style={[styles.metricCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <View style={[styles.metricIcon, { backgroundColor: colors.primarySurface }]}>
+                <Target size={16} color={colors.primary} />
               </View>
-              <AppText variante="label" color={colors.textMuted} style={styles.statLabel}>
-                TASA ÉXITO
+              <AppText variante="label" color={colors.textMuted} style={styles.metricLabel}>
+                WIN RATE
               </AppText>
               <AppText
                 variante="subtitulo"
                 color={
-                  resumen.tasaExito >= 60 ? colors.win :
-                  resumen.tasaExito >= 40 ? colors.warning :
+                  winRate >= 60 ? colors.win :
+                  winRate >= 40 ? colors.warning :
                   resumen.totalOperaciones === 0 ? colors.textSecondary :
                   colors.loss
                 }
               >
-                {resumen.tasaExito.toFixed(1)}%
+                {winRate.toFixed(1)}%
               </AppText>
-              <AppText variante="caption" color={colors.textMuted}>
-                {resumen.totalOperaciones === 0
-                  ? 'Sin ops hoy'
-                  : `${resumen.totalOperaciones} op${resumen.totalOperaciones !== 1 ? 's' : ''} hoy`
-                }
-              </AppText>
-            </Card>
+            </View>
 
-            {/* Ganancia neta hoy */}
-            <Card style={styles.statCard}>
-              <View style={styles.statHeader}>
-                <View style={[styles.statIcon, { backgroundColor: colors.surfaceElevated }]}>
-                  {gananciaNeta >= 0
-                    ? <TrendingUp   size={ICON_SIZE.sm} color={colors.win}  />
-                    : <TrendingDown size={ICON_SIZE.sm} color={colors.loss} />
-                  }
-                </View>
+            {/* Neto hoy */}
+            <View style={[styles.metricCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <View style={[styles.metricIcon, {
+                backgroundColor: esPositivo ? colors.winSurface : colors.lossSurface,
+              }]}>
+                {esPositivo
+                  ? <TrendingUp   size={16} color={colors.win}  />
+                  : <TrendingDown size={16} color={colors.loss} />
+                }
               </View>
-              <AppText variante="label" color={colors.textMuted} style={styles.statLabel}>
+              <AppText variante="label" color={colors.textMuted} style={styles.metricLabel}>
                 NETO HOY
               </AppText>
               <AppText
                 variante="subtitulo"
-                color={gananciaNeta >= 0 ? colors.win : colors.loss}
+                color={esPositivo ? colors.win : colors.loss}
               >
-                {formatearMoneda(gananciaNeta)}
+                {formatMoney(gananciaNeta)}
               </AppText>
-              <AppText variante="caption" color={colors.textMuted}>
-                {gananciaNeta >= 0 ? 'Sesión positiva' : 'Sesión negativa'}
+            </View>
+
+            {/* Ganadoras */}
+            <View style={[styles.metricCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <View style={[styles.metricIcon, { backgroundColor: colors.winSurface }]}>
+                <Trophy size={16} color={colors.win} />
+              </View>
+              <AppText variante="label" color={colors.textMuted} style={styles.metricLabel}>
+                GANADORAS
               </AppText>
-            </Card>
+              <AppText variante="subtitulo" color={colors.win}>
+                {resumen.operacionesGanadoras}
+              </AppText>
+            </View>
+
+            {/* Perdedoras */}
+            <View style={[styles.metricCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <View style={[styles.metricIcon, { backgroundColor: colors.lossSurface }]}>
+                <Zap size={16} color={colors.loss} />
+              </View>
+              <AppText variante="label" color={colors.textMuted} style={styles.metricLabel}>
+                PERDEDORAS
+              </AppText>
+              <AppText variante="subtitulo" color={colors.loss}>
+                {resumen.operacionesPerdedoras}
+              </AppText>
+            </View>
+
           </View>
         </Animated.View>
 
-        {/* Operaciones del día */}
-        <Animated.View style={{
-          opacity:   opOps,
-          transform: [{ translateY: tyOps }],
-        }}>
-          <AppText variante="label" color={colors.textMuted} style={styles.sectionLabel}>
-            OPERACIONES DE HOY
-          </AppText>
-
-          <Card style={styles.opsCard}>
-            <View style={styles.opsRow}>
-
-              {/* Ganadoras */}
-              <View style={styles.opsStat}>
-                <View style={[styles.opsIconWrap, { backgroundColor: colors.winSurface }]}>
-                  <TrendingUp size={ICON_SIZE.md} color={colors.win} />
-                </View>
-                <AppText variante="titulo" color={colors.win}>
-                  {resumen.operacionesGanadoras}
+        {/* ── BARRA DE PROGRESO WIN/LOSS ── */}
+        {resumen.totalOperaciones > 0 && (
+          <Animated.View style={{ opacity: opStats, transform: [{ translateY: tyStats }] }}>
+            <View style={[styles.progressCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <View style={styles.progressHeader}>
+                <AppText variante="caption" color={colors.win}>
+                  {winRate.toFixed(1)}% éxito
                 </AppText>
-                <Badge variante="win" texto="GANADORAS" />
-              </View>
-
-              {/* Separador VS */}
-              <View style={styles.opsSeparador}>
-                <View style={[styles.lineaVertical, { backgroundColor: colors.border }]} />
-                <View style={[styles.vsCircle, {
-                  backgroundColor: colors.surfaceElevated,
-                  borderColor:     colors.border,
-                }]}>
-                  <AppText variante="label" color={colors.textMuted}>VS</AppText>
-                </View>
-                <View style={[styles.lineaVertical, { backgroundColor: colors.border }]} />
-              </View>
-
-              {/* Perdedoras */}
-              <View style={styles.opsStat}>
-                <View style={[styles.opsIconWrap, { backgroundColor: colors.lossSurface }]}>
-                  <TrendingDown size={ICON_SIZE.md} color={colors.loss} />
-                </View>
-                <AppText variante="titulo" color={colors.loss}>
-                  {resumen.operacionesPerdedoras}
+                <AppText variante="caption" color={colors.loss}>
+                  {(100 - winRate).toFixed(1)}% pérdida
                 </AppText>
-                <Badge variante="loss" texto="PERDEDORAS" />
+              </View>
+              <View style={[styles.progressTrack, { backgroundColor: colors.lossSurface }]}>
+                <View style={[styles.progressFill, {
+                  backgroundColor: colors.win,
+                  width: `${winRate}%`,
+                }]} />
               </View>
             </View>
+          </Animated.View>
+        )}
 
-            {/* Barra de progreso */}
-            {resumen.totalOperaciones > 0 && (
-              <>
-                <Divider margen={SPACING.md} />
-                <View style={styles.progressWrap}>
-                  <View style={[styles.progressBar, { backgroundColor: colors.lossSurface }]}>
-                    <View style={[styles.progressFill, {
-                      backgroundColor: colors.win,
-                      width:           `${resumen.tasaExito}%`,
-                    }]} />
-                  </View>
-                  <View style={styles.progressLabels}>
-                    <AppText variante="caption" color={colors.win}>
-                      {resumen.tasaExito.toFixed(1)}% éxito
-                    </AppText>
-                    <AppText variante="caption" color={colors.loss}>
-                      {(100 - resumen.tasaExito).toFixed(1)}% pérdida
-                    </AppText>
-                  </View>
-                </View>
-              </>
-            )}
-          </Card>
+        {/* ── OPERACIONES RECIENTES ── */}
+        <Animated.View style={{ opacity: opRecent, transform: [{ translateY: tyRecent }] }}>
+          <View style={styles.sectionHeader}>
+            <AppText variante="label" color={colors.textMuted}>
+              OPERACIONES RECIENTES
+            </AppText>
+          </View>
 
-          {/* Extremos del día */}
-          {resumen.totalOperaciones > 0 && (
-            <>
-              <AppText variante="label" color={colors.textMuted} style={styles.sectionLabel}>
-                EXTREMOS DE HOY
-              </AppText>
-              <View style={styles.statsRow}>
-                <Card style={[styles.statCard, { borderLeftWidth: 3, borderLeftColor: colors.win }]}>
-                  <AppText variante="label" color={colors.textMuted}>
-                    MEJOR OP.
-                  </AppText>
-                  <AppText variante="subtitulo" color={colors.win}>
-                    +${resumen.mejorOperacion.toFixed(2)}
-                  </AppText>
-                </Card>
-                <Card style={[styles.statCard, { borderLeftWidth: 3, borderLeftColor: colors.loss }]}>
-                  <AppText variante="label" color={colors.textMuted}>
-                    PEOR OP.
-                  </AppText>
-                  <AppText variante="subtitulo" color={colors.loss}>
-                    -${resumen.peorOperacion.toFixed(2)}
-                  </AppText>
-                </Card>
-              </View>
-            </>
-          )}
-
-          {/* Estado vacío */}
-          {operaciones.length === 0 && (
-            <Card style={styles.emptyCard}>
-              <View style={[styles.emptyIconWrap, { backgroundColor: colors.surfaceElevated }]}>
-                <Activity size={ICON_SIZE.xl} color={colors.textMuted} />
+          {recientes.length === 0 ? (
+            <View style={[styles.emptyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <View style={[styles.emptyIcon, { backgroundColor: colors.surfaceElevated }]}>
+                <Zap size={28} color={colors.textMuted} />
               </View>
               <AppText variante="subtitulo" centrado color={colors.textSecondary}>
                 Sin operaciones aún
               </AppText>
-              <AppText
-                variante="caption"
-                centrado
-                color={colors.textMuted}
-                style={styles.emptyDesc}
-              >
-                Registra tu primera operación para comenzar a ver tus estadísticas
+              <AppText variante="caption" centrado color={colors.textMuted} style={styles.emptyDesc}>
+                Toca el botón + para registrar tu primera operación
               </AppText>
-            </Card>
+            </View>
+          ) : (
+            recientes.map((op, i) => {
+              const esWin  = op.tipo === 'win';
+              const fecha  = new Date(op.fecha);
+              const hora   = fecha.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
+              const dia    = fecha.toLocaleDateString('es', { day: '2-digit', month: 'short' });
+
+              return (
+                <View
+                  key={op.id}
+                  style={[styles.tradeRow, {
+                    backgroundColor: colors.surface,
+                    borderColor:     colors.border,
+                    borderLeftColor: esWin ? colors.win : colors.loss,
+                  }]}
+                >
+                  <View style={[styles.tradeIcon, {
+                    backgroundColor: esWin ? colors.winSurface : colors.lossSurface,
+                  }]}>
+                    {esWin
+                      ? <TrendingUp   size={16} color={colors.win}  />
+                      : <TrendingDown size={16} color={colors.loss} />
+                    }
+                  </View>
+
+                  <View style={styles.tradeInfo}>
+                    <AppText variante="cuerpo" color={colors.textPrimary}>
+                      {esWin ? 'Ganancia' : 'Pérdida'}
+                    </AppText>
+                    {op.nota ? (
+                      <AppText variante="caption" color={colors.textMuted}>
+                        {op.nota}
+                      </AppText>
+                    ) : (
+                      <AppText variante="caption" color={colors.textMuted}>
+                        {dia} · {hora}
+                      </AppText>
+                    )}
+                  </View>
+
+                  <AppText
+                    variante="subtitulo"
+                    color={esWin ? colors.win : colors.loss}
+                  >
+                    {esWin ? '+' : '-'}${op.monto.toFixed(2)}
+                  </AppText>
+                </View>
+              );
+            })
           )}
         </Animated.View>
 
@@ -334,16 +325,14 @@ export default function DashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
-  scroll: {
-    flex: 1,
-  },
+  safe: { flex: 1 },
+  scroll: { flex: 1 },
   content: {
     padding:       SPACING.md,
-    paddingBottom: SPACING.xxl,
+    paddingBottom: 100,
   },
+
+  // Header
   header: {
     flexDirection:  'row',
     justifyContent: 'space-between',
@@ -351,155 +340,152 @@ const styles = StyleSheet.create({
     marginBottom:   SPACING.lg,
   },
   themeBtn: {
-    width:          40,
-    height:         40,
-    borderRadius:   20,
-    borderWidth:    1,
+    width:          38,
+    height:         38,
+    borderRadius:   12,
+    borderWidth:    0.5,
     alignItems:     'center',
     justifyContent: 'center',
   },
+
+  // Capital card
   capitalCard: {
-    marginBottom: SPACING.md,
+    borderRadius:  20,
+    padding:       SPACING.lg,
+    marginBottom:  SPACING.md,
   },
   capitalTop: {
     flexDirection:  'row',
     justifyContent: 'space-between',
     alignItems:     'center',
-    marginBottom:   SPACING.sm,
+    marginBottom:   SPACING.md,
   },
-  capitalLabel: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           SPACING.xs,
+  liveBadge: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               6,
+    backgroundColor:   'rgba(255,255,255,0.12)',
+    paddingHorizontal: 10,
+    paddingVertical:   4,
+    borderRadius:      100,
   },
-  capitalDot: {
+  liveDot: {
     width:           6,
     height:          6,
     borderRadius:    3,
-    backgroundColor: '#86efac',
+    backgroundColor: '#2DD4A0',
   },
-  activityBadge: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    gap:               4,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical:   3,
-    borderRadius:      RADIUS.full,
-  },
-  capitalFooter: {
-    flexDirection:  'row',
-    justifyContent: 'space-between',
-    alignItems:     'center',
-    marginTop:      SPACING.md,
-  },
-  capitalCambio: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    gap:               4,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical:   4,
-    borderRadius:      RADIUS.full,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap:           SPACING.sm,
-    marginBottom:  SPACING.md,
-  },
-  statCard: {
-    flex: 1,
-    gap:  SPACING.xs,
-  },
-  statHeader: {
-    marginBottom: SPACING.xs,
-  },
-  statIcon: {
-    width:          36,
-    height:         36,
-    borderRadius:   RADIUS_VALUE,
-    alignItems:     'center',
-    justifyContent: 'center',
-  },
-  statLabel: {
-    marginTop: SPACING.xs,
-  },
-  sectionLabel: {
-    marginBottom: SPACING.sm,
-    marginTop:    SPACING.xs,
-  },
-  opsCard: {
+  capitalMid: {
     marginBottom: SPACING.md,
   },
-  opsRow: {
+  capitalLabel: {
+    marginBottom: 4,
+  },
+  capitalFooter: {
+    flexDirection: 'row',
+  },
+  changePill: {
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               4,
+    paddingHorizontal: 10,
+    paddingVertical:   5,
+    borderRadius:      100,
+  },
+
+  // Grid métricas
+  grid: {
     flexDirection:  'row',
-    alignItems:     'stretch',
-    justifyContent: 'space-around',
+    flexWrap:       'wrap',
+    gap:            SPACING.sm,
+    marginBottom:   SPACING.sm,
   },
-  opsStat: {
-    alignItems:      'center',
-    justifyContent:  'center',
-    gap:             SPACING.sm,
-    flex:            1,
-    paddingVertical: SPACING.sm,
+  metricCard: {
+    width:        '47.5%',
+    borderRadius: 16,
+    borderWidth:  0.5,
+    padding:      SPACING.md,
+    gap:          4,
   },
-  opsIconWrap: {
-    width:          52,
-    height:         52,
-    borderRadius:   RADIUS.lg,
+  metricIcon: {
+    width:          34,
+    height:         34,
+    borderRadius:   10,
     alignItems:     'center',
     justifyContent: 'center',
-    alignSelf:      'center',
+    marginBottom:   4,
   },
-  opsSeparador: {
-    alignItems:    'center',
-    gap:           SPACING.xs,
-    width:         40,
+  metricLabel: {
+    marginBottom: 2,
   },
-  lineaVertical: {
-    width:     1,
-    flex:      1,
-    maxHeight: 24,
+
+  // Barra progreso
+  progressCard: {
+    borderRadius:  14,
+    borderWidth:   0.5,
+    padding:       SPACING.md,
+    marginBottom:  SPACING.md,
+    gap:           8,
   },
-  vsCircle: {
-    width:          28,
-    height:         28,
-    borderRadius:   14,
-    borderWidth:    1,
-    alignItems:     'center',
-    justifyContent: 'center',
+  progressHeader: {
+    flexDirection:  'row',
+    justifyContent: 'space-between',
   },
-  progressWrap: {
-    gap: SPACING.xs,
-  },
-  progressBar: {
-    height:       8,
-    borderRadius: 4,
+  progressTrack: {
+    height:       6,
+    borderRadius: 3,
     overflow:     'hidden',
   },
   progressFill: {
     height:       '100%',
-    borderRadius: 4,
+    borderRadius: 3,
   },
-  progressLabels: {
+
+  // Recientes
+  sectionHeader: {
+    marginBottom: SPACING.sm,
+    marginTop:    SPACING.xs,
+  },
+  tradeRow: {
     flexDirection:  'row',
-    justifyContent: 'space-between',
+    alignItems:     'center',
+    gap:            SPACING.sm,
+    borderRadius:   14,
+    borderWidth:    0.5,
+    borderLeftWidth: 3,
+    padding:        SPACING.md,
+    marginBottom:   SPACING.sm,
   },
+  tradeIcon: {
+    width:          36,
+    height:         36,
+    borderRadius:   10,
+    alignItems:     'center',
+    justifyContent: 'center',
+  },
+  tradeInfo: {
+    flex: 1,
+    gap:  2,
+  },
+
+  // Empty state
   emptyCard: {
-    padding:    SPACING.xl,
-    alignItems: 'center',
-    gap:        SPACING.md,
-    marginTop:  SPACING.sm,
+    borderRadius: 16,
+    borderWidth:  0.5,
+    padding:      SPACING.xl,
+    alignItems:   'center',
+    gap:          SPACING.sm,
   },
-  emptyIconWrap: {
-    width:          72,
-    height:         72,
-    borderRadius:   RADIUS.xl,
+  emptyIcon: {
+    width:          64,
+    height:         64,
+    borderRadius:   20,
     alignItems:     'center',
     justifyContent: 'center',
     marginBottom:   SPACING.sm,
   },
   emptyDesc: {
-    marginTop:  SPACING.xs,
     lineHeight: 20,
-    maxWidth:   260,
+    maxWidth:   240,
   },
 });
